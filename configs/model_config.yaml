@@ -1,0 +1,81 @@
+# 模型配置文件
+
+# 基础配置
+random_seed: 42
+train_test_split_ratio: 0.8
+cross_validation_folds: 5
+
+# XGBoost配置
+xgboost:
+  n_estimators: 100
+  max_depth: 6
+  learning_rate: 0.1
+  subsample: 0.8
+  colsample_bytree: 0.8
+  gamma: 0
+  min_child_weight: 1
+  reg_alpha: 0
+  reg_lambda: 1
+  objective: "reg:squarederror"
+  eval_metric: "rmse"
+  early_stopping_rounds: 10
+
+# LightGBM配置
+lightgbm:
+  n_estimators: 100
+  max_depth: 6
+  learning_rate: 0.1
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_samples: 20
+  min_split_gain: 0
+  reg_alpha: 0
+  reg_lambda: 0
+  objective: "regression"
+  metric: "rmse"
+  early_stopping_rounds: 10
+  verbosity: -1
+
+# CatBoost配置
+catboost:
+  iterations: 100
+  depth: 6
+  learning_rate: 0.1
+  subsample: 0.8
+  colsample_bylevel: 0.8
+  min_data_in_leaf: 1
+  reg_lambda: 1
+  loss_function: "RMSE"
+  eval_metric: "RMSE"
+  early_stopping_rounds: 10
+  verbose: False
+
+# 集成模型配置
+ensemble:
+  models:
+    - xgboost
+    - lightgbm
+    - catboost
+  weights:
+    - 0.4
+    - 0.4
+    - 0.2
+  voting: "soft"
+
+# 超参数优化配置
+hyperopt:
+  max_evals: 100
+  cv_folds: 3
+  scoring: "neg_mean_squared_error"
+  
+# 特征选择配置
+feature_selection:
+  method: "mutual_info"  # mutual_info, f_regression, rfe
+  k_features: 100
+  threshold: 0.01
+
+# 预测配置
+prediction:
+  top_stocks_count: 10
+  prediction_days: 1
+  confidence_threshold: 0.7 

@@ -1,0 +1,268 @@
+version: '3.8'
+
+services:
+  # 主应用服务
+  stock-prediction:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: stock-prediction-app
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+    environment:
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - MODEL_SAVE_PATH=/app/outputs/models
+      - PREDICTION_OUTPUT_PATH=/app/outputs/predictions
+      - ENABLE_CACHE=true
+      - CACHE_DIR=/app/cache
+    env_file:
+      - .env
+    networks:
+      - stock-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import src; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # API服务
+  stock-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: stock-prediction-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+    environment:
+      - PYTHONPATH=/app
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_DEBUG=false
+    env_file:
+      - .env
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - stock-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 开发环境Jupyter服务
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: stock-prediction-jupyter
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+      - jupyter-data:/home/user/.jupyter
+    environment:
+      - PYTHONPATH=/app
+      - JUPYTER_ENABLE_LAB=yes
+    env_file:
+      - .env
+    command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=''", "--NotebookApp.password=''"]
+    networks:
+      - stock-net
+    profiles:
+      - dev
+
+  # Redis缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: stock-prediction-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    networks:
+      - stock-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: stock-prediction-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_DB=stock_prediction
+      - POSTGRES_USER=stock_user
+      - POSTGRES_PASSWORD=stock_password
+    networks:
+      - stock-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stock_user -d stock_prediction"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MongoDB (可选，用于存储非结构化数据)
+  mongodb:
+    image: mongo:6.0
+    container_name: stock-prediction-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=mongodb_password
+      - MONGO_INITDB_DATABASE=stock_prediction
+    networks:
+      - stock-net
+    profiles:
+      - full
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker (用于异步任务)
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: stock-prediction-worker
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+    environment:
+      - PYTHONPATH=/app
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    env_file:
+      - .env
+    command: ["celery", "-A", "src.tasks.worker", "worker", "--loglevel=info"]
+    depends_on:
+      - redis
+    networks:
+      - stock-net
+    profiles:
+      - celery
+
+  # Celery Beat (用于定时任务)
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: stock-prediction-beat
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+    environment:
+      - PYTHONPATH=/app
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    env_file:
+      - .env
+    command: ["celery", "-A", "src.tasks.worker", "beat", "--loglevel=info"]
+    depends_on:
+      - redis
+    networks:
+      - stock-net
+    profiles:
+      - celery
+
+  # Flower (Celery监控)
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: stock-prediction-flower
+    restart: unless-stopped
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    command: ["celery", "-A", "src.tasks.worker", "flower", "--port=5555"]
+    depends_on:
+      - redis
+    networks:
+      - stock-net
+    profiles:
+      - celery
+
+  # Streamlit 可视化界面
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: stock-prediction-streamlit
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+    environment:
+      - PYTHONPATH=/app
+    env_file:
+      - .env
+    command: ["streamlit", "run", "dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    depends_on:
+      - stock-prediction
+    networks:
+      - stock-net
+    profiles:
+      - viz
+
+# 网络配置
+networks:
+  stock-net:
+    driver: bridge
+
+# 数据卷配置
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  mongodb-data:
+    driver: local
+  jupyter-data:
+    driver: local 
