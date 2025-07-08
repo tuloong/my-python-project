@@ -69,26 +69,6 @@ class DataLoader:
         
         # 列名映射字典
         self.column_mapping = {
-            # Tushare列名映射
-            'ts_code': 'stock_code',
-            'trade_date': 'date',
-            'open': 'open',
-            'high': 'high',
-            'low': 'low',
-            'close': 'close',
-            'vol': 'volume',
-            'amount': 'amount',
-            'pct_chg': 'change_rate',
-            'change': 'change',
-            'turnover_rate': 'turnover_rate',
-            
-            # Yahoo Finance列名映射
-            'Open': 'open',
-            'High': 'high',
-            'Low': 'low',
-            'Close': 'close',
-            'Volume': 'volume',
-            'Adj Close': 'adj_close',
             
             # 本地文件中文列名映射
             '股票代码': 'stock_code',

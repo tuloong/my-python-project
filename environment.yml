@@ -19,7 +19,6 @@ dependencies:
     - catboost>=1.0.0
     - yfinance>=0.1.70
     - tushare>=1.2.89
-    - TA-Lib>=0.4.24
     - optuna>=3.0.0
     - plotly>=5.0.0
     - joblib>=1.1.0
@@ -40,4 +39,4 @@ dependencies:
     - black>=22.0.0
     - flake8>=4.0.0
     - isort>=5.10.0
-    - mypy>=0.910 
+    - mypy>=0.910

@@ -212,3 +212,6 @@ secrets.json
 .secrets
 
 .qodo/
+ta-lib/
+ta-lib*
+
