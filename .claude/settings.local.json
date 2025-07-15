@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(source .venv/bin/activate)",
+      "Bash(python -m src.data.data_loader)",
+      "Bash(python3 -m venv .venv)",
+      "Bash(source venv/bin/activate)",
+      "Bash(python src/data/data_loader.py)",
+      "Bash(python src/data/data_preprocessor.py)"
+    ],
+    "deny": []
+  }
+}

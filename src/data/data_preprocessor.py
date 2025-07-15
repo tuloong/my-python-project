@@ -10,7 +10,10 @@ from typing import List, Dict, Tuple, Optional
 import logging
 from scipy import stats
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from data_loader import DataLoader
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from src.data.data_loader import DataLoader
 
 logger = logging.getLogger(__name__)
 
@@ -348,27 +351,53 @@ class DataPreprocessor:
         
         return result_data
     
-    def main():
-        """主函数，用于演示 DataPreprocessor 的功能"""
-        
-        # 初始化数据加载器
-        loader = DataLoader(enable_cache=True)
-        
-        print("数据加载器初始化完成")
-        print(f"缓存目录: {loader.cache_dir}")
-        
-        # 演示加载沪深300成分股
-        try:
-            print("\n正在获取沪深300成分股...")
-            hs300_stocks = loader.load_saved_data("tran.csv", "raw")
+def main():
+    """主函数，用于演示 DataPreprocessor 的功能"""
+    
+    # 初始化数据加载器和预处理器
+    loader = DataLoader(enable_cache=True)
+    preprocessor = DataPreprocessor()
+    
+    print("数据加载器初始化完成")
+    print(f"缓存目录: {loader.cache_dir}")
+    
+    # 演示加载沪深300成分股
+    try:
+        print("\n正在获取沪深300成分股...")
+        hs300_stocks = loader.load_saved_data("train.csv", "raw")
+        if hs300_stocks is not None:
             hs300_stocks = loader.rename_columns(hs300_stocks, loader.column_mapping)
-            if hs300_stocks is not None and not hs300_stocks.empty:
-                print(f"成功获取 {len(hs300_stocks)} 只沪深300成分股")
+            if not hs300_stocks.empty:
+                print(f"成功获取 {len(hs300_stocks)} 条股票数据")
                 print(hs300_stocks.head())
+                
+                # 演示数据清洗
+                print("\n开始数据清洗...")
+                cleaned_data = preprocessor.clean_stock_data(hs300_stocks)
+                print(f"数据清洗完成，数据量: {len(cleaned_data)}")
+                
+                # 演示缺失值处理
+                print("\n处理缺失值...")
+                processed_data = preprocessor.handle_missing_values(cleaned_data)
+                print(f"缺失值处理完成，数据量: {len(processed_data)}")
+                
+                # 演示技术指标计算
+                print("\n计算技术指标...")
+                technical_data = preprocessor.add_technical_indicators(processed_data)
+                print(f"技术指标计算完成，特征数: {len(technical_data.columns)}")
+                
+                # 演示时间特征创建
+                print("\n创建时间特征...")
+                time_features_data = preprocessor.create_time_features(technical_data)
+                print(f"时间特征创建完成，特征数: {len(time_features_data.columns)}")
+                
+                print("\n数据预处理演示完成")
             else:
-                print("沪深300成分股数据为空或文件不存在")
-        except Exception as e:
-            print(f"获取沪深300成分股失败: {e}")
+                print("沪深300成分股数据为空")
+        else:
+            print("沪深300成分股数据为空或文件不存在")
+    except Exception as e:
+        print(f"获取沪深300成分股失败: {e}")
 
-    if __name__ == "__main__":
-        main()
+if __name__ == "__main__":
+    main()

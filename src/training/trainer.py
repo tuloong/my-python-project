@@ -281,19 +281,27 @@ class Trainer:
     def _create_model_instance(self, model_name: str) -> BaseModel:
         """根据模型名称创建模型实例"""
         from ..models import (
-            XGBoostModel, LightGBMModel, CatBoostModel,
-            LinearModel, RidgeModel, LassoModel,
-            EnsembleModel
+            XGBoostModel, LightGBMModel, CatBoostModel, ExtraTreesModel,
+            LinearModel, RidgeModel, LassoModel, 
+            ElasticNetModel, BayesianRidgeModel, PolynomialModel,
+            EnsembleModel, StackingEnsemble, LSTMModel, GRUModel
         )
         
         model_classes = {
             'XGBoostModel': XGBoostModel,
             'LightGBMModel': LightGBMModel,
             'CatBoostModel': CatBoostModel,
+            'ExtraTreesModel': ExtraTreesModel,
             'LinearModel': LinearModel,
             'RidgeModel': RidgeModel,
             'LassoModel': LassoModel,
-            'EnsembleModel': EnsembleModel
+            'ElasticNetModel': ElasticNetModel,
+            'BayesianRidgeModel': BayesianRidgeModel,
+            'PolynomialModel': PolynomialModel,
+            'EnsembleModel': EnsembleModel,
+            'StackingEnsemble': StackingEnsemble,
+            'LSTMModel': LSTMModel,
+            'GRUModel': GRUModel
         }
         
         for class_name, model_class in model_classes.items():
